@@ -5,7 +5,7 @@ import sqlite3
 import telegram
 import time
 import yfinance as yf
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, Filters
 from threading import Thread
 
 
@@ -79,15 +79,31 @@ def show_alarm(update, context):
     if reply:
         context.bot.send_message(chat_id=update.effective_chat.id, text="".join(reply))
     else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Your request not exists.")
+        context.bot.send_message(chat_id=update.effective_chat.id, text="No alarm exists")
         
 
 def del_alarm(update, context):
-    pass
+    context.bot.send_message(chat_id=update.effective_chat.id, 
+                             text="Every alarm you have set will be deleted. Are you sure?\n"
+                                  "Enter 'Yes' to continue, or anything else to cancelation.")
+    return 0
+
+
+def do_delete(update, context):
+    cursor.execute(f"DELETE FROM request_list WHERE user = {update.effective_chat.id}")
+    db.commit()
+    context.bot.send_message(chat_id=update.effective_chat.id, 
+                             text="Your alarms have been successfully deleted!")
+    return -1
+
+
+def cancel_delete(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, 
+                             text="Deletion was not performed!")
+    return -1
 
 
 def real_time_work(bot):
-    
     # 주가 확인 후 사용자에게 메세지 보내고 db에서 삭제
     def alarm(bot):
         current_time = datetime.datetime.now()
@@ -112,7 +128,7 @@ def real_time_work(bot):
                         bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
                                              f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
-                                             f"target_is_lower chance?")
+                                             f"Discount chance?")
                         delete_key_list.append(key)
                     elif (not isLower) and target <= current_price:
                         bot.sendMessage(chat_id=user,
@@ -140,7 +156,11 @@ dispatcher = updater.dispatcher
 
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(CommandHandler('show', show_alarm))
-dispatcher.add_handler(CommandHandler('del', del_alarm))
+dispatcher.add_handler(ConversationHandler(
+        entry_points=[CommandHandler('del', del_alarm)],
+        states={0: [MessageHandler(Filters.regex('^Yes$'), do_delete)]},
+        fallbacks=[MessageHandler(Filters.text | Filters.command & ~(Filters.regex('^Yes$')), cancel_delete)],
+))
 dispatcher.add_handler(MessageHandler(Filters.text, set_alarm))
 
 
