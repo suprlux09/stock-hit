@@ -16,7 +16,7 @@ cursor.execute("CREATE TABLE IF NOT EXISTS request_list(key INTEGER, symbol TEXT
 
  # get telegram bot token
 with open('token', 'r') as f:
-    token = f.readline()[:-1]
+    token = f.readline()
 
 updater = Updater(token, use_context=True)
 bot = updater.bot
