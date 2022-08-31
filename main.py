@@ -14,9 +14,9 @@ cursor = db.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS request_list(key INTEGER, symbol TEXT, user INTEGER, target FLOAT, isLower INTEGER)")
 
 
- # get telegram bot token
+# get telegram bot token
 with open('token', 'r') as f:
-    token = f.readline()
+    token = f.readline().rstrip()
 
 updater = Updater(token, use_context=True)
 bot = updater.bot
@@ -99,7 +99,7 @@ def do_delete(update, context):
 
 def cancel_delete(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, 
-                             text="Deletion was not performed!")
+                             text="Deletion canceled")
     return -1
 
 
@@ -107,8 +107,8 @@ def real_time_work(bot):
     # 주가 확인 후 사용자에게 메세지 보내고 db에서 삭제
     def alarm(bot):
         current_time = datetime.datetime.now()
-        # if current_time.hour < 14 or current_time >= 21:
-        #     return
+        if current_time.hour < 14 or current_time.hour >= 21:
+            return
 
         cursor.execute("SELECT DISTINCT(symbol) FROM request_list")
         symbols = cursor.fetchall()

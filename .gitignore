@@ -130,6 +130,8 @@ dmypy.json
 
 
 token
+nohup.out
 foo
 foo.py
+test.py
 *.db
