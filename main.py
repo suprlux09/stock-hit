@@ -28,11 +28,18 @@ tmp = cursor.fetchone()[0]
 next_key = tmp+1 if tmp else 1
 
 
+# /start
 def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Hello!")
     context.bot.send_message(chat_id=update.effective_chat.id,
                             text="To set the stock price alarm,\n"
-                                "enter {stock symbol} {stock price}")
+                                "enter {stock symbol} {target price}")
+    context.bot.send_message(chat_id=update.effective_chat.id, 
+                            text="Enter /show to see the list of your alarms")
+    context.bot.send_message(chat_id=update.effective_chat.id, 
+                            text="Enter /del to remove every alarms you set")
+    context.bot.send_message(chat_id=update.effective_chat.id, 
+                            text="Enter /start to see this message again")                          
 
 
 # {symbol} {target price} 입력
