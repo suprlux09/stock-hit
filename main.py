@@ -1,9 +1,9 @@
-import collections
 import datetime
 import schedule
 import sqlite3
 import telegram
 import time
+import sys
 import yfinance as yf
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, Filters
 from threading import Thread
@@ -35,6 +35,7 @@ def start(update, context):
                                 "enter {stock symbol} {stock price}")
 
 
+# {symbol} {target price} 입력
 def set_alarm(update, context):
     global next_key
     args = update.message.text.split(" ")
@@ -72,6 +73,7 @@ def set_alarm(update, context):
                                     "Example: MSFT 350")
 
 
+# /show
 def show_alarm(update, context):
     cursor.execute(f"SELECT symbol, target FROM request_list WHERE user = {update.effective_chat.id}")
     reply = ["  ".join((req[0], str(req[1]), str(round(yf.Ticker(req[0]).history(period='1d')['Close'][0], 3)), '\n'))
@@ -82,6 +84,7 @@ def show_alarm(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text="No alarm exists")
         
 
+# /del
 def del_alarm(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, 
                              text="Every alarm you have set will be deleted. Are you sure?\n"
@@ -89,6 +92,7 @@ def del_alarm(update, context):
     return 0
 
 
+# /del에서 Yes 입력 -> db에서 삭제 수행
 def do_delete(update, context):
     cursor.execute(f"DELETE FROM request_list WHERE user = {update.effective_chat.id}")
     db.commit()
@@ -97,13 +101,16 @@ def do_delete(update, context):
     return -1
 
 
+# /del에서 Yes 이외 입력 -> 삭제 취소
 def cancel_delete(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, 
                              text="Deletion canceled")
     return -1
 
 
+# 스레드에 올릴 함수
 def real_time_work(bot):
+
     # 주가 확인 후 사용자에게 메세지 보내고 db에서 삭제
     def alarm(bot):
         current_time = datetime.datetime.now()
@@ -145,8 +152,8 @@ def real_time_work(bot):
         db.commit()
 
 
+    # 1분마다 주가 확인, 사용자에게 알림 보냄
     schedule.every().minutes.do(alarm, bot)
-
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -164,8 +171,13 @@ dispatcher.add_handler(ConversationHandler(
 dispatcher.add_handler(MessageHandler(Filters.text, set_alarm))
 
 
-thread = Thread(target=real_time_work, args=(bot,))
-thread.start()
+try:
+    # 사용자에게 주가 알림을 보내는 작업을 다른 스레드에 올린다
+    thread = Thread(target=real_time_work, args=(bot,))
+    thread.start()
 
-updater.start_polling()
-updater.idle()
+    updater.start_polling()
+    updater.idle()
+except Exception as e:
+    type, value, traceback = sys.exc_info()
+    print(type, value, traceback.tb_lineno)
