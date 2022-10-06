@@ -35,17 +35,16 @@ def start(update, context):
                             text="To set the stock price alarm,\n"
                                 "enter {stock symbol} {target price}")
     context.bot.send_message(chat_id=update.effective_chat.id, 
-                            text="Enter /show to see the list of your alarms")
-    context.bot.send_message(chat_id=update.effective_chat.id, 
-                            text="Enter /del to remove every alarms you set")
-    context.bot.send_message(chat_id=update.effective_chat.id, 
-                            text="Enter /start to see this message again")                          
+                            text="Enter /show to see the list of your alarms\n"
+                                "Enter /del to remove every alarms you set\n"
+                                "Enter /start to see this message again")                        
 
 
 # {symbol} {target price} 입력
 def set_alarm(update, context):
     global next_key
     args = update.message.text.split(" ")
+    print(f"set_alarm: {update.message}")
 
     if len(args) == 2:
         try:
@@ -81,6 +80,7 @@ def set_alarm(update, context):
 
 # /show
 def show_alarm(update, context):
+    print(f"show_alarm: {update.message}")
     cursor.execute(f"SELECT symbol, target FROM request_list WHERE user = {update.effective_chat.id}")
     reply = ["  ".join((req[0], str(req[1]), str(round(yf.Ticker(req[0]).history(period='1d')['Close'][0], 3)), '\n'))
                 for req in cursor.fetchall()]
@@ -92,6 +92,7 @@ def show_alarm(update, context):
 
 # /del
 def del_alarm(update, context):
+    print(f"del_alarm: {update.message}")
     context.bot.send_message(chat_id=update.effective_chat.id, 
                              text="Every alarm you have set will be deleted. Are you sure?\n"
                                   "Enter 'Yes' to continue, or anything else to cancelation.")
@@ -120,6 +121,7 @@ def real_time_work(bot):
     # 주가 확인 후 사용자에게 메세지 보내고 db에서 삭제
     def alarm(bot):
         current_time = datetime.datetime.now()
+        print(current_time)
         if current_time.hour < 14 or current_time.hour >= 21:
             return
 
@@ -129,9 +131,10 @@ def real_time_work(bot):
         delete_key_list = []
         for symbol in symbols:
             symbol = symbol[0]
+            print(f"{symbol}")
             ticker = yf.Ticker(symbol)
             current_price = ticker.history(period='1d')['Close'][0]
-            
+
             cursor.execute(f"SELECT key, user, target, isLower FROM request_list WHERE symbol='{symbol}'")
             reqs = cursor.fetchall()
             try:
@@ -159,7 +162,7 @@ def real_time_work(bot):
 
 
     # 1분마다 주가 확인, 사용자에게 알림 보냄
-    schedule.every().minutes.do(alarm, bot)
+    schedule.every(3).minutes.do(alarm, bot)
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -184,4 +187,3 @@ thread.start()
 
 updater.start_polling()
 updater.idle()
-
