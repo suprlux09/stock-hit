@@ -1,14 +1,17 @@
 import datetime
+import pickle
 import schedule
 import sqlite3
 import telegram
 import time
+import traceback
 import sys
 import os
 import yfinance as yf
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, Filters
 from threading import Thread
-
+from difflib import SequenceMatcher
+from queue import PriorityQueue
 
 db = sqlite3.connect("reqlist.db", check_same_thread=False)
 cursor = db.cursor()
@@ -58,12 +61,35 @@ def set_alarm(update, context):
             else:
                 isLower = 0
 
-        except IndexError:
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                    text=f"Stock symbol {symbol} is not available")
         except ValueError:
             context.bot.send_message(chat_id=update.effective_chat.id,
                                     text="Stock price should be a number")
+        except IndexError:
+            with open("data/nasdaq_symbols.pickle", "rb") as fr:
+                known_symbols = pickle.load(fr);
+            with open("data/nyse_symbols.pickle", "rb") as fr:
+                known_symbols += pickle.load(fr);   
+
+            queue = PriorityQueue()
+            for another_symbol in known_symbols:
+                rat = SequenceMatcher(None, symbol, another_symbol).ratio()
+                queue.put((-rat, another_symbol))
+            
+            modified_symbols = []
+            while len(modified_symbols) < 3:
+                rat, tmp = queue.get()
+                if not yf.Ticker(tmp).history(period='1d').empty:
+                    modified_symbols.append((tmp, round(yf.Ticker(tmp).history(period='1d')['Close'][0], 2)))
+
+            context.bot.send_message(chat_id=update.effective_chat.id,
+                                    text=f"Stock symbol {symbol} is not available..\n"
+                                          "Do you mean these?")
+            
+            tmp_text = ""
+            for modified_symbol, mdf_symbol_price in modified_symbols:
+                tmp_text += f"{modified_symbol} {mdf_symbol_price}\n"
+            context.bot.send_message(chat_id=update.effective_chat.id, text=tmp_text.rstrip())
+            
         else:
             cursor.execute(f"INSERT INTO request_list VALUES({next_key}, '{symbol}', {user}, {target}, {isLower})")
             next_key += 1
@@ -121,7 +147,7 @@ def real_time_work(bot):
 
     # 주가 확인 후 사용자에게 메세지 보내고 db에서 삭제
     def alarm(bot):
-        current_time = datetime.datetime.now()
+        current_time = datetime.datetime.utcnow()
         print(current_time)
         if current_time.hour < 14 or current_time.hour >= 21:
             return
@@ -153,8 +179,9 @@ def real_time_work(bot):
                                              f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
                                              f"Time to sell?")
                         delete_key_list.append(key)
-            except telegram.error.Unauthorized:
-                pass
+            except Exception:
+                traceback.print_exc()
+                
             
             for key in delete_key_list:
                 cursor.execute(f"DELETE FROM request_list WHERE key={key}")
