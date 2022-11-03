@@ -133,5 +133,5 @@ token
 nohup.out
 foo
 foo.py
-test.py
+*test.py
 *.db
