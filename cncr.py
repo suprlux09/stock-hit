@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import time
 import traceback
@@ -12,15 +13,11 @@ from db_resource import *
 cursor = db.cursor()
 
 
-def thread_one(bot):
-    """Concurrent task for sending notifications to the user
-    This function runs at the other thread, not the main thread
-    and calls the inner function notify() every 3 minutes
-    """
+async def notify(bot):
+    """Send the target reached notifications to the user and delete them from the database. This work will be performed in every 15 minutes."""
+    while True:
+        await asyncio.sleep(900)
 
-
-    def notify(bot):
-        """Send the target reached notifications to the user and delete them from the database"""
         lock.acquire()
         current_time = datetime.datetime.utcnow()
         print(current_time)
@@ -41,31 +38,22 @@ def thread_one(bot):
                 for req in reqs:
                     key, user, target, is_lower = req[0], req[1], req[2], req[3]
                     if is_lower and target >= current_price:
-                        bot.sendMessage(chat_id=user,
+                        await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
                                              f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
                                              f"Discount chance?")
                         delete_key_list.append(key)
                     elif (not is_lower) and target <= current_price:
-                        bot.sendMessage(chat_id=user,
+                        await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
                                              f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
                                              f"Time to sell?")
                         delete_key_list.append(key)
             except Exception:
                 traceback.print_exc()
-                time.sleep(60)
-
 
             for key in delete_key_list:
                 cursor.execute(f"DELETE FROM request_list WHERE key={key}")
 
         db.commit()
         lock.release()
-
-
-    schedule.every(30).minutes.do(notify, bot)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)

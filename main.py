@@ -1,32 +1,35 @@
+import asyncio
 import os
 from threading import Thread
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, Filters
+from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, filters
 
 from cncr import *
 from handlers import *
 
 
-if __name__ == '__main__':
-    token = os.getenv('BOT_TOKEN')
-
-    updater = Updater(token, use_context=True)
-    bot = updater.bot
-
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('show', show_notification))
-    dispatcher.add_handler(ConversationHandler(
+async def main():
+    application = Application.builder().token(os.getenv('BOT_TOKEN')).build()
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('show', show_notification))
+    application.add_handler(ConversationHandler(
             entry_points=[CommandHandler('del', del_notification)],
-            states={0: [MessageHandler(Filters.regex('^Yes$'), do_delete)]},
-            fallbacks=[MessageHandler(Filters.text | Filters.command & ~(Filters.regex('^Yes$')), cancel_delete)],
+            states={0: [MessageHandler(filters.Regex('^Yes$'), do_delete)]},
+            fallbacks=[MessageHandler(filters.Regex('^(?!Yes$).*'), cancel_delete)],
     ))
-    dispatcher.add_handler(MessageHandler(Filters.text, set_notification))
+    application.add_handler(MessageHandler(filters.TEXT, set_notification))
 
     # Check the stock prices and send the notification to the user
-    thread = Thread(target=thread_one, args=(bot,))
-    thread.start()
+    asyncio.create_task(notify(application.bot))
 
     # Receive requests from the user
-    updater.start_polling()
-    updater.idle()
+    await application.initialize()
+
+    while True:
+        await application.updater.start_polling()
+        await application.start()
+        await asyncio.sleep(1)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
