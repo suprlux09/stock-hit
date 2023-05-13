@@ -11,12 +11,18 @@ from db_resource import *
 
 
 cursor = db.cursor()
+gotSig = False
+
+
+def set_gotSig_True():
+    global gotSig
+    gotSig = True
 
 
 async def notify(bot):
-    """Send the target reached notifications to the user and delete them from the database. This work will be performed in every 15 minutes."""
+    """Send the target reached notifications to the user and delete them from the database. This work will be performed in every 3 minutes."""
     while True:
-        await asyncio.sleep(900)
+        await asyncio.sleep(180)
 
         lock.acquire()
         current_time = datetime.datetime.utcnow()
@@ -57,3 +63,7 @@ async def notify(bot):
 
         db.commit()
         lock.release()
+
+        if gotSig:
+            print("Terminate notification service..")
+            return

@@ -5,20 +5,20 @@ from db_resource import *
 cursor = db.cursor()
 
 
-def start(update, context):
+async def start(update, context):
     """Send a greeting message to a user"""
 
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Hello!")
-    context.bot.send_message(chat_id=update.effective_chat.id,
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Hello!")
+    await context.bot.send_message(chat_id=update.effective_chat.id,
                             text="To set the stock price notification,\n"
                                 "enter {stock symbol} {target price}")
-    context.bot.send_message(chat_id=update.effective_chat.id,
+    await context.bot.send_message(chat_id=update.effective_chat.id,
                             text="Enter /show to see the list of your notifications\n"
                                 "Enter /del to remove every notifications you set\n"
                                 "Enter /start to see this message again")
 
 
-def set_notification(update, context):
+async def set_notification(update, context):
     """ Update user's notification request in the database
     User input format: {stock symbol} {target stock price}
     """
@@ -38,10 +38,10 @@ def set_notification(update, context):
                 is_lower = False
 
         except ValueError:
-            context.bot.send_message(chat_id=update.effective_chat.id,
+            await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text="Stock price should be a number")
         except IndexError:
-           context.bot.send_message(chat_id=update.effective_chat.id,
+           await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"Stock symbol {symbol} is not available")
         else:
             lock.acquire()
@@ -55,17 +55,17 @@ def set_notification(update, context):
             db.commit()
             lock.release()
 
-            context.bot.send_message(chat_id=update.effective_chat.id,
+            await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"Your request ({symbol}, {target}) was successfully submitted!")
-            context.bot.send_message(chat_id=update.effective_chat.id,
+            await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"The notification will be sent to you if {symbol}({str(round(ticker.history(period='1d')['Close'][0], 2))}) hits that price..")
     else:
-        context.bot.send_message(chat_id=update.effective_chat.id,
+        await context.bot.send_message(chat_id=update.effective_chat.id,
                                 text="Input form should be\n'{stock symbol} {stock price}'\n"
                                     "Example: MSFT 350")
 
 
-def show_notification(update, context):
+async def show_notification(update, context):
     """Show the notifications been set by the user to him/her
     User input format: /show
     """
@@ -78,24 +78,24 @@ def show_notification(update, context):
                 for req in cursor.fetchall()]
     lock.release()
     if reply:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="".join(reply))
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="".join(reply))
     else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="No notification exists")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="No notification exists")
 
 
-def del_notification(update, context):
+async def del_notification(update, context):
     """Send a warning message to the user who requests notification deletion
     User input format: /del
     """
 
     print(f"del_notification: {update.message}")
-    context.bot.send_message(chat_id=update.effective_chat.id,
+    await context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Every notification you have set will be deleted. Are you sure?\n"
                                   "Enter 'Yes' to continue, or anything else to cancelation.")
     return 0
 
 
-def do_delete(update, context):
+async def do_delete(update, context):
     """Execute deletion
     This function will run if user enter 'Yes' after '/del'
     """
@@ -103,16 +103,16 @@ def do_delete(update, context):
     cursor.execute(f"DELETE FROM request_list WHERE user_id = {update.effective_chat.id}")
     db.commit()
     lock.release()
-    context.bot.send_message(chat_id=update.effective_chat.id,
+    await context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Your notifications have been successfully deleted!")
     return -1
 
 
-def cancel_delete(update, context):
+async def cancel_delete(update, context):
     """Inform the user that the deletion is canceled
     This function will run if the user enter anything else except 'Yes' after '/del'
     """
 
-    context.bot.send_message(chat_id=update.effective_chat.id,
+    await context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Deletion canceled")
     return -1
