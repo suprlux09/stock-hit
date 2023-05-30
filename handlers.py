@@ -44,8 +44,8 @@ async def set_notification(update, context):
            await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"Stock symbol {symbol} is not available")
         else:
-            lock.acquire()
             # Set database row index
+            await lock.acquire()
             cursor.execute("SELECT MAX(key) FROM request_list")
             tmp = cursor.fetchone()[0]
             next_key = tmp+1 if tmp else 1
@@ -54,6 +54,7 @@ async def set_notification(update, context):
             next_key += 1
             db.commit()
             lock.release()
+            
 
             await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"Your request ({symbol}, {target}) was successfully submitted!")
@@ -72,11 +73,12 @@ async def show_notification(update, context):
 
     print(f"show_notification: {update.message}")
 
-    lock.acquire()
+    await lock.acquire()
     cursor.execute(f"SELECT symbol, target FROM request_list WHERE user_id = {update.effective_chat.id}")
     reply = ["  ".join((req[0], str(req[1]), str(round(yf.Ticker(req[0]).history(period='1d')['Close'][0], 3)), '\n'))
                 for req in cursor.fetchall()]
     lock.release()
+    
     if reply:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="".join(reply))
     else:
@@ -99,10 +101,11 @@ async def do_delete(update, context):
     """Execute deletion
     This function will run if user enter 'Yes' after '/del'
     """
-    lock.acquire()
+    await lock.acquire()
     cursor.execute(f"DELETE FROM request_list WHERE user_id = {update.effective_chat.id}")
     db.commit()
     lock.release()
+
     await context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Your notifications have been successfully deleted!")
     return -1

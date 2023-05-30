@@ -1,10 +1,7 @@
 import asyncio
 import datetime
-import time
 import traceback
 
-import psycopg2
-import schedule
 import yfinance as yf
 
 from db_resource import *
@@ -22,9 +19,12 @@ def set_gotSig_True():
 async def notify(bot):
     """Send the target reached notifications to the user and delete them from the database. This work will be performed in every 3 minutes."""
     while True:
-        await asyncio.sleep(180)
+        for i in range(600):
+            await asyncio.sleep(3)
+            if gotSig:
+                break
 
-        lock.acquire()
+        await lock.acquire()
         current_time = datetime.datetime.utcnow()
         print(current_time)
 
@@ -46,14 +46,14 @@ async def notify(bot):
                     if is_lower and target >= current_price:
                         await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
-                                             f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
-                                             f"Discount chance?")
+                                            f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
+                                            f"Discount chance?")
                         delete_key_list.append(key)
                     elif (not is_lower) and target <= current_price:
                         await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
-                                             f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
-                                             f"Time to sell?")
+                                            f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
+                                            f"Time to sell?")
                         delete_key_list.append(key)
             except Exception:
                 traceback.print_exc()
@@ -61,8 +61,8 @@ async def notify(bot):
             for key in delete_key_list:
                 cursor.execute(f"DELETE FROM request_list WHERE key={key}")
 
-        db.commit()
-        lock.release()
+            db.commit()
+            lock.release()
 
         if gotSig:
             print("Terminate notification service..")

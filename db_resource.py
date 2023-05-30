@@ -1,5 +1,5 @@
 import os
-import threading
+import asyncio
 import psycopg2
 from dotenv import load_dotenv
 
@@ -11,4 +11,4 @@ user = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWD")
 port = os.getenv("DB_PORT")
 db = psycopg2.connect(host=host, dbname=dbname, user=user, password=password, port=port)
-lock = threading.Lock()
+lock = asyncio.Lock()
