@@ -22,13 +22,13 @@ async def main():
         loop.add_signal_handler(sig, lambda l: l.create_task(terminate(l)), loop)
 
     application = Application.builder().token(os.getenv('BOT_TOKEN')).build()
-    application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('show', show_notification))
     application.add_handler(ConversationHandler(
             entry_points=[CommandHandler('del', del_notification)],
             states={0: [MessageHandler(filters.Regex('^Yes$'), do_delete)]},
             fallbacks=[MessageHandler(filters.Regex('^(?!Yes$).*'), cancel_delete)],
     ))
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('show', show_notification))
     application.add_handler(MessageHandler(filters.TEXT, set_notification))
 
     await application.initialize()
