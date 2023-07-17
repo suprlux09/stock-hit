@@ -17,7 +17,7 @@ def set_gotSig_True():
 
 
 async def notify(bot):
-    """Send the target reached notifications to the user and delete them from the database. This work will be performed in every 3 minutes."""
+    """Send the target reached notifications to the user and delete them from the database. This work will be performed in every 30 minutes."""
     while True:
         for i in range(600):
             await asyncio.sleep(3)
@@ -62,7 +62,8 @@ async def notify(bot):
                 cursor.execute(f"DELETE FROM request_list WHERE key={key}")
 
             db.commit()
-            lock.release()
+
+        lock.release()
 
         if gotSig:
             print("Terminate notification service..")

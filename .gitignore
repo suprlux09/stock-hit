@@ -136,3 +136,4 @@ foo.py
 *test.py
 *.db
 tags
+logfiles/
