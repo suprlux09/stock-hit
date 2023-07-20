@@ -55,8 +55,12 @@ async def notify(bot):
                                             f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
                                             f"Time to sell?")
                         delete_key_list.append(key)
+                    else:
+                        cursor.execute(f"UPDATE request_list SET recent={current_price} WHERE key={key}")
             except Exception:
                 traceback.print_exc()
+                lock.release()
+                return
 
             for key in delete_key_list:
                 cursor.execute(f"DELETE FROM request_list WHERE key={key}")

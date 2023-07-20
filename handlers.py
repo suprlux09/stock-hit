@@ -1,3 +1,5 @@
+import traceback
+
 import yfinance as yf
 
 from db_resource import *
@@ -44,22 +46,33 @@ async def set_notification(update, context):
            await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"Stock symbol {symbol} is not available")
         else:
-            # Set database row index
-            await lock.acquire()
-            cursor.execute("SELECT MAX(key) FROM request_list")
-            tmp = cursor.fetchone()[0]
-            next_key = tmp+1 if tmp else 1
+            try:
+                # Set database row index
+                await lock.acquire()
+                cursor.execute("SELECT MAX(key) FROM request_list")
+                tmp = cursor.fetchone()[0]
+                recent = ticker.history(period='1d')['Close'][0]
+                next_key = tmp+1 if tmp else 1
+            except Exception:
+                traceback.print_exc()
+                await context.bot.send_message(chat_id=update.effective_chat.id,
+                                    text=f"An unexpected error has occurred. Please try later.")
+                lock.release()
+                return
 
-            cursor.execute(f"INSERT INTO request_list VALUES({next_key}, '{symbol}', {user}, {target}, {is_lower})")
+            cursor.execute(f"INSERT INTO request_list VALUES({next_key}, '{symbol}', {user}, {target}, {recent}, {is_lower})")
             next_key += 1
+
             db.commit()
             lock.release()
-            
+
 
             await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"Your request ({symbol}, {target}) was successfully submitted!")
             await context.bot.send_message(chat_id=update.effective_chat.id,
-                                    text=f"The notification will be sent to you if {symbol}({str(round(ticker.history(period='1d')['Close'][0], 2))}) hits that price..")
+                                    text=f"The notification will be sent to you if {symbol} hits that price..")
+            await context.bot.send_message(chat_id=update.effective_chat.id,
+                                    text=f"Current price: {str(round(recent, 2))}")            
     else:
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                 text="Input form should be\n'{stock symbol} {stock price}'\n"
@@ -74,11 +87,11 @@ async def show_notification(update, context):
     print(f"show_notification: {update.message}")
 
     await lock.acquire()
-    cursor.execute(f"SELECT symbol, target FROM request_list WHERE user_id = {update.effective_chat.id}")
-    reply = ["  ".join((req[0], str(req[1]), str(round(yf.Ticker(req[0]).history(period='1d')['Close'][0], 3)), '\n'))
+    cursor.execute(f"SELECT symbol, target, recent FROM request_list WHERE user_id = {update.effective_chat.id}")
+    reply = ["  ".join((req[0], str(req[1]), str(round(req[2], 3)), '\n'))
                 for req in cursor.fetchall()]
     lock.release()
-    
+
     if reply:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="".join(reply))
     else:
@@ -89,11 +102,12 @@ async def del_notification(update, context):
     """Send a warning message to the user who requests notification deletion
     User input format: /del
     """
-
+    print(update)
+    print(context)
     print(f"del_notification: {update.message}")
     await context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Every notification you have set will be deleted. Are you sure?\n"
-                                  "Enter 'Yes' to continue, or anything else to cancelation.")
+                                  "Enter 'Yes' to continue, or any other key to cancel.")
     return 0
 
 
