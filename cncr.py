@@ -34,25 +34,27 @@ async def notify(bot):
         delete_key_list = []
         for symbol in symbols:
             symbol = symbol[0]
-            print(f"{symbol}")
-            ticker = yf.Ticker(symbol)
-            current_price = ticker.history(period='1d')['Close'][0]
 
-            cursor.execute(f"SELECT key, user_id, target, is_lower FROM request_list WHERE symbol='{symbol}'")
-            reqs = cursor.fetchall()
             try:
+                ticker = yf.Ticker(symbol)
+                current_price = ticker.history(period='1d')['Close'][0]
+
+                cursor.execute(f"SELECT key, user_id, target, is_lower FROM request_list WHERE symbol='{symbol}'")
+                reqs = cursor.fetchall()
                 for req in reqs:
                     key, user, target, is_lower = req[0], req[1], req[2], req[3]
                     if is_lower and target >= current_price:
                         await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
-                                            f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
+                                            f"{symbol} hit the target price ${target}! \n"
+                                            f"Current Price: ${str(round(current_price, 2))}"
                                             f"Discount chance?")
                         delete_key_list.append(key)
                     elif (not is_lower) and target <= current_price:
                         await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
-                                            f"{symbol}(${str(round(current_price, 2))}) hit the target price ${target}! \n"
+                                            f"{symbol} hit the target price ${target}! \n"
+                                            f"Current Price: ${str(round(current_price, 2))}"
                                             f"Time to sell?")
                         delete_key_list.append(key)
                     else:
