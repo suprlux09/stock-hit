@@ -32,10 +32,10 @@ async def notify(bot):
         symbols = cursor.fetchall()
 
         delete_key_list = []
-        for symbol in symbols:
-            symbol = symbol[0]
+        try:
+            for symbol in symbols:
+                symbol = symbol[0]
 
-            try:
                 ticker = yf.Ticker(symbol)
                 current_price = ticker.history(period='1d')['Close'][0]
 
@@ -46,30 +46,29 @@ async def notify(bot):
                     if is_lower and target >= current_price:
                         await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
-                                            f"{symbol} hit the target price ${target}! \n"
-                                            f"Current Price: ${str(round(current_price, 2))}"
+                                            f"{symbol} hit the target price ${target}!\n"
+                                            f"Current Price: ${str(round(current_price, 2))}\n"
                                             f"Discount chance?")
                         delete_key_list.append(key)
                     elif (not is_lower) and target <= current_price:
                         await bot.sendMessage(chat_id=user,
                                         text=f"{current_time.strftime('%Y/%m/%d %H:%M:%S')} (UTC)\n"
-                                            f"{symbol} hit the target price ${target}! \n"
-                                            f"Current Price: ${str(round(current_price, 2))}"
+                                            f"{symbol} hit the target price ${target}!\n"
+                                            f"Current Price: ${str(round(current_price, 2))}\n"
                                             f"Time to sell?")
                         delete_key_list.append(key)
                     else:
                         cursor.execute(f"UPDATE request_list SET recent={current_price} WHERE key={key}")
-            except Exception:
-                traceback.print_exc()
-                lock.release()
-                return
 
             for key in delete_key_list:
                 cursor.execute(f"DELETE FROM request_list WHERE key={key}")
 
-            db.commit()
+        except Exception:
+            traceback.print_exc()
 
-        lock.release()
+        finally:
+            db.commit()
+            lock.release()
 
         if gotSig:
             print("Terminate notification service..")
