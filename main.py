@@ -2,10 +2,30 @@ import asyncio
 import os
 import signal
 
+import logging
+import logging.handlers
+
 from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, filters
 
 from cncr import *
 from handlers import *
+
+
+if(os.getenv('ENV') == 'dev'):
+    logging.basicConfig(level=logging.DEBUG)
+elif(os.getenv('ENV') == 'prod'):
+    logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+fileHandler = logging.FileHandler('./main.log')
+streamHandler = logging.StreamHandler()
+
+logger.addHandler(fileHandler)
+logger.addHandler(streamHandler)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fileHandler.setFormatter(formatter)
+streamHandler.setFormatter(formatter)
 
 
 async def terminate(loop):
@@ -44,8 +64,8 @@ async def main():
     await application.stop()
     await application.shutdown()
 
-    print("Terminate stock-hit...")
-
+    logger.info("Terminate stock-hit...")
 
 if __name__ == '__main__':
+    logger.info("Start stock-hit!")
     asyncio.run(main())
