@@ -1,15 +1,31 @@
 import traceback
 
+import logging
+import logging.handlers
+
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 import yfinance as yf
 
 from db_resource import *
 
+
 cursor = db.cursor()
+
+logger = logging.getLogger(__name__)
+fileHandler = logging.FileHandler('./handlers.log')
+streamHandler = logging.StreamHandler()
+
+logger.addHandler(fileHandler)
+logger.addHandler(streamHandler)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fileHandler.setFormatter(formatter)
+streamHandler.setFormatter(formatter)
 
 
 async def start(update, context):
     """Send a greeting message to a user"""
+    logger.info(f"/start: {update.message}")
 
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Hello!")
     await context.bot.send_message(chat_id=update.effective_chat.id,
@@ -30,7 +46,7 @@ async def set_notification(update, context):
     """ Update user's notification request in the database
     User input format: {stock symbol} {target stock price}
     """
-    print(f"set_notification: {update.message}")
+    logger.info(f"set_notification: {update.message}")
 
     args = update.message.text.split()
     user = update.message.from_user.id
@@ -47,9 +63,9 @@ async def set_notification(update, context):
                                              f"Check out /start for the usage")
               return
         except Exception:  # temporary
-            traceback.print_exc()
             await context.bot.send_message(chat_id=update.effective_chat.id,
                                     text=f"An unexpected error has occurred. Please try later.")
+            logger.error(traceback.format_exc())
             return
 
         # Target prices
@@ -109,9 +125,8 @@ async def show(update, context):
     """Show the notifications been set by the user to him/her
     User input format: /show
     """
-
-    print(f"show_notification: {update.message}")
-
+    logger.info(f"/show: {update.message}")
+    
     notifications = await get_notifications(update.effective_chat.id)
 
     if notifications:
@@ -131,9 +146,7 @@ async def delete(update, context):
     """Ask the user for the deletion method
     User input format: /delete
     """
-    print(update)
-    print(context)
-    print(f"del_notification: {update.message}")
+    logger.info(f"/del: {update.message}")
     
     notifications = await get_notifications(update.effective_chat.id)
 
@@ -186,7 +199,6 @@ async def do_delete(update, context):
         cursor.execute(f"DELETE FROM request_list WHERE user_id = {update.effective_chat.id} AND symbol = '{update.message.text}'")
         lock.release()
 
-        print(deleted_notifications)
 
         if len(deleted_notifications) == 0:
             await context.bot.send_message(chat_id=update.effective_chat.id,
