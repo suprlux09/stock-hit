@@ -7,6 +7,9 @@ import logging.handlers
 
 from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, filters
 
+if not os.path.exists('./log'):
+    os.makedirs('./log')
+
 from cncr import *
 from handlers import *
 
