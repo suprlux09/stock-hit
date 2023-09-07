@@ -12,7 +12,7 @@ from db_resource import *
 cursor = db.cursor()
 
 logger = logging.getLogger(__name__)
-fileHandler = logging.FileHandler('./handlers.log')
+fileHandler = logging.FileHandler('./log/handlers.log')
 streamHandler = logging.StreamHandler()
 
 logger.addHandler(fileHandler)

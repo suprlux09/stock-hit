@@ -17,7 +17,7 @@ elif(os.getenv('ENV') == 'prod'):
     logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-fileHandler = logging.FileHandler('./main.log')
+fileHandler = logging.FileHandler('./log/main.log')
 streamHandler = logging.StreamHandler()
 
 logger.addHandler(fileHandler)

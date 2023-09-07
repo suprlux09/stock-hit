@@ -1,0 +1,38 @@
+# docker-compose.yml
+
+version: '3.7'
+services:
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+    volumes:
+      - ./app/sqlfiles:/docker-entrypoint-initdb.d
+    command: -p ${DB_PORT}
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWD}
+    env_file:
+      - .env
+  
+  app: 
+    depends_on:
+      - db
+    image: python:3.8-slim-buster
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python main.py"
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      ENV: ${ENV}
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWD: ${DB_PASSWD}
+      DB_PORT: ${DB_PORT}
+    env_file:
+      - .env

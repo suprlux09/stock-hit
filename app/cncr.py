@@ -14,7 +14,7 @@ cursor = db.cursor()
 gotSig = False
 
 logger = logging.getLogger(__name__)
-fileHandler = logging.FileHandler('./cncr.log')
+fileHandler = logging.FileHandler('./log/cncr.log')
 streamHandler = logging.StreamHandler()
 
 logger.addHandler(fileHandler)
